@@ -2,9 +2,10 @@
 
 import React, {useState, useEffect, useCallback} from 'react';
 import {
-  SafeAreaView, StyleSheet, Text,
+  StyleSheet, Text,
   TouchableOpacity, View, FlatList, RefreshControl,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import type {RouteProp} from '@react-navigation/native';

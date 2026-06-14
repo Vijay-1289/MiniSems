@@ -2,9 +2,10 @@
 
 import React, {useState} from 'react';
 import {
-  SafeAreaView, StyleSheet, Text,
+  StyleSheet, Text,
   TouchableOpacity, View, ScrollView, Alert,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import {Colors} from '@theme/colors';

@@ -3,14 +3,15 @@
 
 import React, {useState, useEffect, useCallback} from 'react';
 import {
+  Alert,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -25,6 +26,7 @@ import {supabase, db} from '@services/supabase';
 import type {AdminStackParamList} from '@apptypes/navigation.types';
 import type {DashboardStats, Exam} from '@apptypes/database.types';
 import {useTranslation} from 'react-i18next';
+import {LanguageSwitcher} from '@components/common/LanguageSwitcher';
 
 type Nav = NativeStackNavigationProp<AdminStackParamList>;
 
@@ -59,8 +61,29 @@ const QuickActionButton: React.FC<{
 
 const AdminDashboard: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const {user} = useAuthStore();
+  const {user, logout} = useAuthStore();
   const {t} = useTranslation();
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
+      [
+        {text: t('common.cancel'), style: 'cancel'},
+        {
+          text: t('auth.logout'),
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            navigation.getParent()?.reset({
+              index: 0,
+              routes: [{name: 'RoleSelect'}],
+            });
+          },
+        },
+      ],
+    );
+  }, [logout, navigation, t]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -157,24 +180,28 @@ const AdminDashboard: React.FC = () => {
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
           style={styles.header}>
-          <View style={styles.headerContent}>
+          <View style={styles.headerRow}>
             <View>
               <Text style={styles.greeting}>
                 {t('dashboard.welcome', {name: user?.name?.split(' ')[0] || 'Admin'})}
               </Text>
               <Text style={styles.date}>{today}</Text>
             </View>
-            <View style={styles.headerAvatar}>
-              <Text style={styles.headerAvatarText}>
-                {(user?.name || 'A').charAt(0).toUpperCase()}
-              </Text>
+            <View style={styles.headerRight}>
+              <LanguageSwitcher compact />
+              <TouchableOpacity style={styles.notifBtn}>
+                <Text style={styles.notifIcon}>🔔</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+                <Text style={styles.logoutBtnText}>🚪</Text>
+              </TouchableOpacity>
+              <View style={styles.headerAvatar}>
+                <Text style={styles.headerAvatarText}>
+                  {(user?.name || 'A').charAt(0).toUpperCase()}
+                </Text>
+              </View>
             </View>
           </View>
-
-          {/* Notification bell */}
-          <TouchableOpacity style={styles.notifBtn}>
-            <Text style={styles.notifIcon}>🔔</Text>
-          </TouchableOpacity>
         </LinearGradient>
 
         {/* Stats Cards */}
@@ -244,7 +271,7 @@ const AdminDashboard: React.FC = () => {
               emoji="📝"
               label={t('dashboard.createExam')}
               gradient={['#16A34A', '#22C55E']}
-              onPress={() => {}}
+              onPress={() => navigation.navigate('CreateExam')}
             />
             <QuickActionButton
               emoji="📊"
@@ -342,9 +369,8 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
     paddingBottom: Spacing['2xl'],
     paddingHorizontal: Spacing.base,
-    position: 'relative',
   },
-  headerContent: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -361,34 +387,47 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     marginTop: 3,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   headerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.4)',
   },
   headerAvatarText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xl,
+    fontSize: FontSize.md,
     color: Colors.white,
   },
   notifBtn: {
-    position: 'absolute',
-    top: Spacing.xl,
-    right: Spacing.base,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   notifIcon: {
-    fontSize: 20,
+    fontSize: 18,
+  },
+  logoutBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutBtnText: {
+    fontSize: 18,
   },
   statsSection: {
     paddingTop: Spacing.base,

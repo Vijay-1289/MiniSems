@@ -29,7 +29,26 @@ interface AuthState {
 const getPersistedUser = (): AuthUser | null => {
   try {
     const raw = storage.getString('auth_user');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    
+    // Validate UUID format and check role-specific mock requirements
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isStaleStudent = parsed && parsed.role === 'student' && !parsed.studentId;
+    const isStaleFaculty = parsed && parsed.role === 'faculty' && !parsed.facultyId;
+    
+    if (parsed && (
+      parsed.collegeId === 'mock-college-id' || 
+      !uuidRegex.test(parsed.collegeId) || 
+      isStaleStudent || 
+      isStaleFaculty
+    )) {
+      console.log('Force-clearing stale mock session credentials.');
+      storage.delete('auth_user');
+      return null;
+    }
+    
+    return parsed;
   } catch {
     return null;
   }

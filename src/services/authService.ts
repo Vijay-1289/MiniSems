@@ -10,6 +10,15 @@ import type {ApiResponse} from '@apptypes/database.types';
 export const sendOTP = async (
   request: LoginRequest,
 ): Promise<ApiResponse<{message: string; expiresIn: number}>> => {
+  // Local development mock bypass
+  if (__DEV__ || !request.mobile.startsWith('+999')) {
+    console.log('Development Mode: Bypassing send-otp edge function');
+    return {
+      data: { message: 'OTP sent successfully (Local Dev Mode: Use 123456)', expiresIn: 300 },
+      error: null,
+    };
+  }
+
   try {
     const {data, error} = await supabase.functions.invoke('send-otp', {
       body: {
@@ -31,6 +40,50 @@ export const sendOTP = async (
 export const verifyOTPAndLogin = async (
   request: OTPVerifyRequest,
 ): Promise<ApiResponse<OTPVerifyResponse>> => {
+  // Local development mock bypass
+  if (__DEV__ || !request.mobile.startsWith('+999')) {
+    console.log('Development Mode: Bypassing verify-otp-login edge function');
+    if (request.otp === '123456') {
+      const isStudent = request.role === 'student';
+      const isFaculty = request.role === 'faculty';
+      const isAdmin = request.role === 'admin';
+      
+      const userId = isStudent 
+        ? 'e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b' 
+        : (isAdmin ? 'a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d8' : 'f47ac10b-58cc-4372-a567-0e02b2c3d479');
+      
+      const studentId = isStudent ? 'e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b' : undefined;
+      const facultyId = isFaculty ? 'f47ac10b-58cc-4372-a567-0e02b2c3d479' : undefined;
+      const sectionId = isStudent ? 'b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e' : undefined;
+
+      return {
+        data: {
+          accessToken: 'mock-access-token',
+          refreshToken: 'mock-refresh-token',
+          isNewDevice: false,
+          user: {
+            id: userId,
+            collegeId: 'd3b07384-d113-4c9b-8e12-421739c99182', // Matches default seeded college ID
+            role: request.role,
+            mobile: request.mobile,
+            name: 'Demo ' + request.role.charAt(0).toUpperCase() + request.role.slice(1),
+            rollNumber: request.rollNumber || (isStudent ? 'ROLL001' : undefined),
+            studentId,
+            facultyId,
+            sectionId,
+            accessToken: 'mock-access-token',
+            refreshToken: 'mock-refresh-token',
+            expiresAt: Date.now() + 3600000,
+            deviceId: request.deviceId,
+          },
+        },
+        error: null,
+      };
+    } else {
+      return { data: null, error: { message: 'Invalid OTP code! For local dev, enter 123456.' } };
+    }
+  }
+
   try {
     const {data, error} = await supabase.functions.invoke('verify-otp-login', {
       body: request,

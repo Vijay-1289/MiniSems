@@ -2,7 +2,8 @@
 // Replace each stub file with full implementation
 
 import React from 'react';
-import {SafeAreaView, StyleSheet, Text, View, TouchableOpacity} from 'react-native';
+import {StyleSheet, Text, View, TouchableOpacity} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import {Colors} from '@theme/colors';
 import {FontFamily, FontSize} from '@theme/typography';

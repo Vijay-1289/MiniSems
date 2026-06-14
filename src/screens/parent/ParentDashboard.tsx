@@ -2,9 +2,10 @@
 
 import React, {useState, useEffect, useCallback} from 'react';
 import {
-  SafeAreaView, ScrollView, StyleSheet, Text,
+  ScrollView, StyleSheet, Text,
   TouchableOpacity, View, RefreshControl, Switch, Alert,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import {Colors} from '@theme/colors';
@@ -14,10 +15,11 @@ import {useAuthStore} from '@stores/authStore';
 import {db} from '@services/supabase';
 import {useTranslation} from 'react-i18next';
 import type {Student, Result} from '@apptypes/database.types';
+import {LanguageSwitcher} from '@components/common/LanguageSwitcher';
 
 const ParentDashboard: React.FC = () => {
   const navigation = useNavigation();
-  const {user} = useAuthStore();
+  const {user, logout} = useAuthStore();
   const {t} = useTranslation();
 
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,27 @@ const ParentDashboard: React.FC = () => {
   const [student, setStudent] = useState<Student | null>(null);
   const [results, setResults] = useState<Result[]>([]);
   const [whatsappEnabled, setWhatsappEnabled] = useState(true);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
+      [
+        {text: t('common.cancel'), style: 'cancel'},
+        {
+          text: t('auth.logout'),
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            navigation.getParent()?.reset({
+              index: 0,
+              routes: [{name: 'RoleSelect'}],
+            });
+          },
+        },
+      ],
+    );
+  }, [logout, navigation, t]);
 
   const fetchData = useCallback(async () => {
     if (!user?.mobile) return;
@@ -70,8 +93,18 @@ const ParentDashboard: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={[...Colors.gradients.parentHeader]} style={styles.header}>
-        <Text style={styles.title}>{t('parent.title')}</Text>
-        <Text style={styles.subtitle}>Track your child's academic progress</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.title}>{t('parent.title')}</Text>
+            <Text style={styles.subtitle}>Track your child's academic progress</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <LanguageSwitcher compact />
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+              <Text style={styles.logoutBtnText}>🚪</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </LinearGradient>
 
       <ScrollView
@@ -158,6 +191,10 @@ const ParentDashboard: React.FC = () => {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.background},
   header: {padding: Spacing.base, paddingBottom: Spacing.xl},
+  headerRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
+  headerRight: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  logoutBtn: {width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center'},
+  logoutBtnText: {fontSize: 18},
   title: {fontFamily: FontFamily.bold, fontSize: FontSize['2xl'], color: Colors.white},
   subtitle: {fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: 'rgba(255,255,255,0.8)', marginTop: 2},
   scroll: {paddingBottom: 40},

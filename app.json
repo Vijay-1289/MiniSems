@@ -1,7 +1,12 @@
 {
   "name": "MiniSems",
   "displayName": "MiniSems",
-  "android": {
-    "package": "com.anonymous.minisems"
+  "expo": {
+    "name": "MiniSems",
+    "slug": "minisems",
+    "version": "1.0.0",
+    "android": {
+      "package": "com.anonymous.minisems"
+    }
   }
 }

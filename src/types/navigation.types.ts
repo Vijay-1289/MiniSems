@@ -28,6 +28,7 @@ export type AdminStackParamList = {
   AdminTabs: undefined;
   AddStudent: {studentId?: string};
   AddFaculty: {facultyId?: string};
+  CreateExam: undefined;
   ExamDetail: {examId: string};
   StudentDetail: {studentId: string};
   FacultyDetail: {facultyId: string};

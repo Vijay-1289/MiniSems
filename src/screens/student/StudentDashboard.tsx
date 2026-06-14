@@ -2,9 +2,11 @@
 
 import React, {useState, useEffect, useCallback} from 'react';
 import {
-  RefreshControl, SafeAreaView, ScrollView,
+  Alert,
+  RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -24,12 +26,33 @@ type Nav = NativeStackNavigationProp<StudentStackParamList, 'StudentDashboard'>;
 
 const StudentDashboard: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const {user} = useAuthStore();
+  const {user, logout} = useAuthStore();
   const {t} = useTranslation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [upcomingExams, setUpcomingExams] = useState<Exam[]>([]);
   const [completedExams, setCompletedExams] = useState<Exam[]>([]);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
+      [
+        {text: t('common.cancel'), style: 'cancel'},
+        {
+          text: t('auth.logout'),
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            navigation.getParent()?.reset({
+              index: 0,
+              routes: [{name: 'RoleSelect'}],
+            });
+          },
+        },
+      ],
+    );
+  }, [logout, navigation, t]);
 
   const fetchExams = useCallback(async () => {
     if (!user?.collegeId) return;
@@ -69,6 +92,9 @@ const StudentDashboard: React.FC = () => {
               <LanguageSwitcher compact />
               <TouchableOpacity onPress={() => navigation.navigate('MyPerformance')} style={styles.performanceBtn}>
                 <Text style={styles.performanceBtnText}>📈</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+                <Text style={styles.logoutBtnText}>🚪</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -134,6 +160,8 @@ const styles = StyleSheet.create({
   headerRight: {flexDirection: 'row', alignItems: 'center', gap: 8},
   performanceBtn: {width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center'},
   performanceBtnText: {fontSize: 18},
+  logoutBtn: {width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center'},
+  logoutBtnText: {fontSize: 18},
   studentChip: {backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: BorderRadius.full, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)'},
   chipText: {fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white},
   section: {padding: Spacing.base, marginTop: Spacing.sm},

@@ -27,8 +27,8 @@ const supabaseStorageAdapter = {
 
 // ── Configuration ──
 // Replace with your Supabase project credentials
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://your-project-id.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your-anon-key-here';
+const SUPABASE_URL = 'https://fryeammpjqcwkiknevng.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_s98tBwJ8u6Mgqf0rdQp5FQ_S9Rxo_jb';
 
 // ── Client ──
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

@@ -2,9 +2,10 @@
 
 import React, {useState, useCallback, useEffect} from 'react';
 import {
-  SafeAreaView, ScrollView, StyleSheet, Text,
+  ScrollView, StyleSheet, Text,
   TouchableOpacity, View, RefreshControl,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {Colors} from '@theme/colors';
 import {FontFamily, FontSize} from '@theme/typography';

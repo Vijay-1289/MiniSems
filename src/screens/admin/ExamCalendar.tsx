@@ -2,9 +2,10 @@
 
 import React, {useState, useCallback, useEffect} from 'react';
 import {
-  SafeAreaView, ScrollView, StyleSheet, Text,
+  ScrollView, StyleSheet, Text,
   TouchableOpacity, View, RefreshControl,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {Colors} from '@theme/colors';
 import {FontFamily, FontSize} from '@theme/typography';
@@ -12,10 +13,16 @@ import {BorderRadius, Shadow, Spacing} from '@theme/spacing';
 import {useAuthStore} from '@stores/authStore';
 import {db} from '@services/supabase';
 import {useTranslation} from 'react-i18next';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {AdminStackParamList} from '@apptypes/navigation.types';
 import type {Exam} from '@apptypes/database.types';
 import {format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths} from 'date-fns';
 
+type Nav = NativeStackNavigationProp<AdminStackParamList>;
+
 const ExamCalendar: React.FC = () => {
+  const navigation = useNavigation<Nav>();
   const {user} = useAuthStore();
   const {t} = useTranslation();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -185,6 +192,16 @@ const ExamCalendar: React.FC = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* FAB for Create Exam */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('CreateExam')}
+        activeOpacity={0.8}>
+        <LinearGradient colors={Colors.gradients.primaryBlue} style={styles.fabGradient}>
+          <Text style={styles.fabIcon}>+</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -221,6 +238,9 @@ const styles = StyleSheet.create({
   examName: {fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.textPrimary},
   examMeta: {fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2},
   examTime: {fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textTertiary, marginTop: 4},
+  fab: {position: 'absolute', bottom: Spacing.xl, right: Spacing.xl, ...Shadow.lg},
+  fabGradient: {width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center'},
+  fabIcon: {fontFamily: FontFamily.medium, fontSize: 32, color: Colors.white, marginTop: -4},
 });
 
 export default ExamCalendar;

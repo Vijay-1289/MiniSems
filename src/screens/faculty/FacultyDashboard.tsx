@@ -1,7 +1,8 @@
 // Mini Sems — Faculty Dashboard Screen
 
 import React, {useState, useEffect, useCallback} from 'react';
-import {RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {Colors} from '@theme/colors';
 import {FontFamily, FontSize} from '@theme/typography';
@@ -11,13 +12,41 @@ import {ExamCard} from '@components/exam/ExamCard';
 import {useAuthStore} from '@stores/authStore';
 import {db} from '@services/supabase';
 import type {Exam} from '@apptypes/database.types';
+import {useTranslation} from 'react-i18next';
+import {LanguageSwitcher} from '@components/common/LanguageSwitcher';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import type {RootStackParamList} from '@apptypes/navigation.types';
 
 const FacultyDashboard: React.FC = () => {
-  const {user} = useAuthStore();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const {user, logout} = useAuthStore();
+  const {t} = useTranslation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [upcomingExams, setUpcomingExams] = useState<Exam[]>([]);
   const [stats, setStats] = useState({questionCount: 0, avgScore: 0, highScore: 0, lowScore: 0});
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      t('auth.logout'),
+      t('auth.logoutConfirm'),
+      [
+        {text: t('common.cancel'), style: 'cancel'},
+        {
+          text: t('auth.logout'),
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            navigation.getParent()?.reset({
+              index: 0,
+              routes: [{name: 'RoleSelect'}],
+            });
+          },
+        },
+      ],
+    );
+  }, [logout, navigation, t]);
 
   const fetchData = useCallback(async () => {
     if (!user?.collegeId) return;
@@ -43,8 +72,18 @@ const FacultyDashboard: React.FC = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {setRefreshing(true); fetchData();}} />}
         contentContainerStyle={styles.scroll}>
         <LinearGradient colors={Colors.gradients.facultyHeader} style={styles.header}>
-          <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0]} 👨‍🏫</Text>
-          <Text style={styles.subGreeting}>Faculty Portal</Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0]} 👨‍🏫</Text>
+              <Text style={styles.subGreeting}>Faculty Portal</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <LanguageSwitcher compact />
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+                <Text style={styles.logoutBtnText}>🚪</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </LinearGradient>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsRow}>
@@ -68,6 +107,10 @@ const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: Colors.background},
   scroll: {paddingBottom: 40},
   header: {padding: Spacing.base, paddingBottom: Spacing.xl},
+  headerRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
+  headerRight: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  logoutBtn: {width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center'},
+  logoutBtnText: {fontSize: 18},
   greeting: {fontFamily: FontFamily.bold, fontSize: FontSize['2xl'], color: Colors.white},
   subGreeting: {fontFamily: FontFamily.medium, fontSize: FontSize.base, color: 'rgba(255,255,255,0.8)', marginTop: 2},
   statsRow: {flexDirection: 'row', gap: 12, paddingHorizontal: Spacing.base, paddingVertical: Spacing.md},

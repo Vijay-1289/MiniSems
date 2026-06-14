@@ -7,6 +7,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {Colors} from '@theme/colors';
 import {FontFamily} from '@theme/typography';
 import {BorderRadius, Shadow} from '@theme/spacing';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import FacultyDashboard from '@screens/faculty/FacultyDashboard';
 import QuestionBuilder from '@screens/faculty/QuestionBuilder';
@@ -27,27 +28,36 @@ const TAB_ICONS: Record<string, string> = {
   Results: '🏆',
 };
 
-const FacultyTabs: React.FC = () => (
-  <Tab.Navigator
-    screenOptions={({route}) => ({
-      headerShown: false,
-      tabBarStyle: styles.tabBar,
-      tabBarActiveTintColor: Colors.secondary,
-      tabBarInactiveTintColor: Colors.textMuted,
-      tabBarLabelStyle: styles.tabLabel,
-      tabBarIcon: ({focused}) => (
-        <View style={[styles.tabIconContainer, focused && styles.tabIconActive]}>
-          <Text style={styles.tabIcon}>{TAB_ICONS[route.name]}</Text>
-        </View>
-      ),
-    })}>
+const FacultyTabs: React.FC = () => {
+  const insets = useSafeAreaInsets();
+  return (
+    <Tab.Navigator
+      screenOptions={({route}) => ({
+        headerShown: false,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 56 + (insets.bottom > 0 ? insets.bottom : 8),
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          }
+        ],
+        tabBarActiveTintColor: Colors.secondary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarIcon: ({focused}) => (
+          <View style={[styles.tabIconContainer, focused && styles.tabIconActive]}>
+            <Text style={styles.tabIcon}>{TAB_ICONS[route.name]}</Text>
+          </View>
+        ),
+      })}>
     <Tab.Screen name="Dashboard" component={FacultyDashboard} />
     <Tab.Screen name="Questions" component={QuestionBuilder} options={{tabBarLabel: 'Questions'}} />
     <Tab.Screen name="Exams" component={ExamBuilder} options={{tabBarLabel: 'Exams'}} />
     <Tab.Screen name="Monitor" component={LiveExamMonitor} options={{tabBarLabel: 'Monitor'}} />
     <Tab.Screen name="Results" component={ResultsReview} options={{tabBarLabel: 'Results'}} />
   </Tab.Navigator>
-);
+  );
+};
 
 const FacultyNavigator: React.FC = () => (
   <Stack.Navigator screenOptions={{headerShown: false}}>
@@ -70,8 +80,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    height: 64,
-    paddingBottom: 8,
     paddingTop: 6,
     ...Shadow.md,
   },
