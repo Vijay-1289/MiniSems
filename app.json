@@ -5,8 +5,17 @@
     "name": "MiniSems",
     "slug": "minisems",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/PROJECT-ID-PLACEHOLDER"
+    },
     "android": {
       "package": "com.anonymous.minisems"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9ebe8203-3a42-4494-a5e9-dc26a936ad96"
+      }
     }
   }
 }

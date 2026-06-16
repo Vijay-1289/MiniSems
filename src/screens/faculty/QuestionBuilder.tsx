@@ -21,6 +21,8 @@ import {BorderRadius, Shadow, Spacing} from '@theme/spacing';
 import {useAuthStore} from '@stores/authStore';
 import {db} from '@services/supabase';
 import {StatusBadge} from '@components/common/Badges';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 const QuestionBuilder: React.FC = () => {
   const {user} = useAuthStore();
@@ -48,7 +50,7 @@ const QuestionBuilder: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   // Bulk States
-  const [csvText, setCsvText] = useState('');
+  const [fileSelected, setFileSelected] = useState<{uri: string; name: string} | null>(null);
   const [bulkReport, setBulkReport] = useState<string | null>(null);
   const [uploadingBulk, setUploadingBulk] = useState(false);
 
@@ -195,17 +197,41 @@ const QuestionBuilder: React.FC = () => {
     return parsedRows;
   };
 
+  const handleSelectFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setFileSelected({
+          uri: asset.uri,
+          name: asset.name,
+        });
+        setBulkReport(null);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', 'Failed to pick file: ' + err.message);
+    }
+  };
+
   // ── Bulk Upload Handler ──
   const handleBulkUpload = async () => {
-    if (!csvText.trim()) {
-      Alert.alert('Error', 'Please paste CSV content first.');
+    if (!fileSelected) {
+      Alert.alert('Error', 'Please select a CSV file first.');
       return;
     }
 
     setUploadingBulk(true);
     setBulkReport(null);
     try {
-      const rows = parseCSV(csvText);
+      const csvContent = await FileSystem.readAsStringAsync(fileSelected.uri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      const rows = parseCSV(csvContent);
       if (rows.length === 0) {
         throw new Error('No valid rows found. Please check format & headers.');
       }
@@ -260,7 +286,7 @@ const QuestionBuilder: React.FC = () => {
         if (error) throw error;
         
         setBulkReport(`Import Report: Successfully uploaded ${questionsToInsert.length} questions. Skipped ${skippedCount} rows due to unmatched subject codes.`);
-        setCsvText('');
+        setFileSelected(null);
         loadData();
       } else {
         throw new Error('Zero questions imported. Verify that subject codes (e.g. PHY, MATH, CHEM) exist in this college.');
@@ -523,24 +549,20 @@ const QuestionBuilder: React.FC = () => {
           <ScrollView contentContainerStyle={styles.formScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.instructionsHeader}>CSV Upload Guidelines</Text>
             <Text style={styles.instructionsText}>
-              Paste raw CSV data matching the following headers:{"\n"}
+              Select a CSV file matching the following headers:{"\n"}
               <Text style={styles.boldText}>Subject_Code,Question_Text,Option_A,Option_B,Option_C,Option_D,Correct_Answer,Marks,Difficulty</Text>{"\n"}
               {"\n"}
               Ensure subject codes match subject codes in your college database (e.g. MATH, PHY, CHEM). Difficulty should be easy, medium, or hard.
             </Text>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Paste CSV Data *</Text>
-              <TextInput
-                style={[styles.input, styles.csvTextArea]}
-                value={csvText}
-                onChangeText={setCsvText}
-                placeholder="PHY,What is value of gravity?,9.8,10,12,0,A,1,easy"
-                placeholderTextColor={Colors.textMuted}
-                multiline
-                numberOfLines={8}
-              />
-            </View>
+            {/* File Picker Zone */}
+            <TouchableOpacity onPress={handleSelectFile} style={styles.uploadZone} activeOpacity={0.8}>
+              <Text style={styles.uploadIcon}>📄</Text>
+              <Text style={styles.uploadZoneTitle}>
+                {fileSelected ? fileSelected.name : 'Tap to select CSV File'}
+              </Text>
+              <Text style={styles.uploadZoneSub}>Supports .csv files up to 5MB</Text>
+            </TouchableOpacity>
 
             {bulkReport && (
               <View style={styles.reportBox}>
@@ -548,17 +570,22 @@ const QuestionBuilder: React.FC = () => {
               </View>
             )}
 
-            <TouchableOpacity
-              onPress={handleBulkUpload}
-              disabled={uploadingBulk}
-              style={styles.saveBtn}
-              activeOpacity={0.85}>
-              <LinearGradient colors={Colors.gradients.successGreen} style={styles.saveBtnGradient}>
-                <Text style={styles.saveBtnText}>
-                  {uploadingBulk ? 'Parsing & Uploading...' : 'Parse & Bulk Import'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            {fileSelected && !uploadingBulk && (
+              <TouchableOpacity
+                onPress={handleBulkUpload}
+                style={styles.saveBtn}
+                activeOpacity={0.85}>
+                <LinearGradient colors={Colors.gradients.successGreen} style={styles.saveBtnGradient}>
+                  <Text style={styles.saveBtnText}>Parse & Bulk Import</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {uploadingBulk && (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>⚙ Parsing & uploading questions...</Text>
+              </View>
+            )}
           </ScrollView>
         )}
       </View>
@@ -628,6 +655,12 @@ const styles = StyleSheet.create({
   instructionsText: {fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: Spacing.md},
   reportBox: {backgroundColor: Colors.successSurface, borderColor: Colors.successBorder, borderWidth: 1, borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.md},
   reportText: {fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.successDark},
+  uploadZone: {backgroundColor: Colors.surface, height: 180, borderRadius: BorderRadius.xl, borderStyle: 'dashed', borderWidth: 2, borderColor: Colors.borderDark, alignItems: 'center', justifyContent: 'center', padding: Spacing.base, marginBottom: Spacing.lg, ...Shadow.sm},
+  uploadIcon: {fontSize: 44, marginBottom: 8},
+  uploadZoneTitle: {fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.textPrimary, textAlign: 'center'},
+  uploadZoneSub: {fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: 4},
+  loadingContainer: {padding: Spacing.base, backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, alignItems: 'center', ...Shadow.sm},
+  loadingText: {fontFamily: FontFamily.medium, fontSize: FontSize.base, color: Colors.textSecondary},
 });
 
 export default QuestionBuilder;
