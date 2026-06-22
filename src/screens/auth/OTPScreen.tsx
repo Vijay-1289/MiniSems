@@ -26,6 +26,7 @@ import {useAuthStore} from '@stores/authStore';
 import {useTranslation} from 'react-i18next';
 import type {RootStackParamList} from '@apptypes/navigation.types';
 import Toast from 'react-native-toast-message';
+import * as Notifications from 'expo-notifications';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'OTP'>;
 type Route = RouteProp<RootStackParamList, 'OTP'>;
@@ -51,22 +52,50 @@ const OTPScreen: React.FC = () => {
   const [hasError, setHasError] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN);
   const [resending, setResending] = useState(false);
+  // The current OTP hint (code shown inline for dev/testing)
+  const [currentHint, setCurrentHint] = useState<string | undefined>(otpHint);
+  // Extract just the numeric code from the hint string if present
+  const displayCode = currentHint
+    ? (currentHint.match(/\b\d{6}\b/)?.[0] ?? undefined)
+    : undefined;
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const successAnim = useRef(new Animated.Value(0)).current;
 
   const gradient = ROLE_GRADIENT[role] || ROLE_GRADIENT.student;
 
-  // Show OTP hint in development/preview mode
+  // Trigger a local push notification when the OTP hint is received (dev mode)
   useEffect(() => {
-    if (otpHint) {
-      Toast.show({
-        type: 'info',
-        text1: '🔑 Testing OTP Code',
-        text2: otpHint,
-        visibilityTime: 12000,
-      });
-    }
-  }, [otpHint]);
+    const triggerLocalNotification = async () => {
+      if (currentHint && displayCode) {
+        try {
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status === 'granted') {
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: '🔑 MiniSems OTP Code',
+                body: `Your OTP code is ${displayCode} (Dev Mode)`,
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.HIGH,
+              },
+              trigger: null, // trigger immediately
+            });
+          } else {
+            // Fallback to Toast if permission is denied
+            Toast.show({
+              type: 'info',
+              text1: '🔑 Dev Mode — OTP Code',
+              text2: `Your OTP is: ${displayCode}`,
+              visibilityTime: 10000,
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to schedule local OTP notification:', e);
+        }
+      }
+    };
+    triggerLocalNotification();
+  }, [currentHint, displayCode]);
 
   // Cooldown timer
   useEffect(() => {
@@ -148,18 +177,32 @@ const OTPScreen: React.FC = () => {
     if (resendCooldown > 0 || resending) return;
     setResending(true);
     try {
-      await sendOTP({role, mobile, rollNumber});
-      setResendCooldown(RESEND_COOLDOWN);
-      timerRef.current = setInterval(() => {
-        setResendCooldown(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            return 0;
-          }
-          return prev - 1;
+      const response = await sendOTP({role, mobile, rollNumber});
+      if (response.data) {
+        setCurrentHint(response.data.message);
+        setResendCooldown(RESEND_COOLDOWN);
+        timerRef.current = setInterval(() => {
+          setResendCooldown(prev => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current!);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        const newCode = response.data.otp || response.data.message?.match(/\b\d{6}\b/)?.[0];
+        Toast.show({
+          type: 'success',
+          text1: 'OTP Resent',
+          text2: newCode
+            ? `New OTP: ${newCode} (sent to +91${mobile})`
+            : `New OTP sent to +91${mobile}`,
+          visibilityTime: 10000,
         });
-      }, 1000);
-      Toast.show({type: 'success', text1: 'OTP Resent', text2: `New OTP sent to +91${mobile}`});
+      } else {
+        Toast.show({type: 'error', text1: 'Resend Failed', text2: response.error?.message || 'Try again'});
+      }
     } finally {
       setResending(false);
     }
@@ -212,6 +255,8 @@ const OTPScreen: React.FC = () => {
           {/* OTP form */}
           <View style={styles.formCard}>
             <Text style={styles.formLabel}>{t('auth.enterOTP')}</Text>
+
+
 
             <OTPInput
               length={6}
@@ -334,10 +379,51 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.base,
     color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
     alignSelf: 'flex-start',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+  },
+  // ── Dev OTP Hint Banner ──
+  otpHintBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#F97316',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: 10,
+    width: '100%',
+  },
+  otpHintIcon: {
+    fontSize: 22,
+    marginTop: 2,
+  },
+  otpHintContent: {
+    flex: 1,
+  },
+  otpHintTitle: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.sm,
+    color: '#9A3412',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  otpHintCode: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize['2xl'],
+    color: '#C2410C',
+    letterSpacing: 6,
+    marginBottom: 2,
+  },
+  otpHintNote: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs ?? 11,
+    color: '#9A3412',
+    opacity: 0.75,
   },
   errorMsg: {
     fontFamily: FontFamily.medium,
