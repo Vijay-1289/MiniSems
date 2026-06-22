@@ -102,11 +102,16 @@ const LoginScreen: React.FC = () => {
         return;
       }
 
+      // Pass OTP code hint for dev/testing mode — shown as inline banner on OTP screen
+      const otpCode = response.data?.otp;
+      const otpMsg = response.data?.message;
       navigation.navigate('OTP', {
         mobile,
         role,
         rollNumber: rollNumber || undefined,
-        otpHint: response.data?.message,
+        otpHint: otpCode
+          ? `OTP sent. Code: ${otpCode}`
+          : otpMsg,
       });
     } catch {
       Toast.show({type: 'error', text1: 'Error', text2: t('common.networkError')});
