@@ -159,6 +159,10 @@ export const verifyOTPAndLogin = async (
     const mobile = request.mobile.startsWith('+91')
       ? request.mobile
       : `+91${request.mobile}`;
+    const mobileWithCode = mobile;
+    const mobileRaw = request.mobile.startsWith('+91')
+      ? request.mobile.slice(3)
+      : request.mobile;
 
     let isVerified = false;
 
@@ -241,16 +245,31 @@ export const verifyOTPAndLogin = async (
     if (request.role === 'parent') {
       // Parents do not have direct user records in 'users' table, they are stored on students.
       // Lookup the student record by parent_mobile to verify they exist and get college details.
-      let query = db.students()
+      let studentRecord = null;
+      let stdErr = null;
+
+      // Try with prefixed parent_mobile first
+      let queryPref = db.students()
         .select('id, college_id, name, roll_number, mobile, parent_mobile, section_id')
-        .eq('parent_mobile', mobile)
+        .eq('parent_mobile', mobileWithCode)
         .eq('status', 'active');
-      
-      if (request.rollNumber) {
-        query = query.eq('roll_number', request.rollNumber);
+      if (request.rollNumber) queryPref = queryPref.eq('roll_number', request.rollNumber);
+
+      const {data: prefData, error: prefErr} = await queryPref.maybeSingle();
+      if (prefData) {
+        studentRecord = prefData;
+      } else {
+        // Try with raw parent_mobile fallback
+        let queryRaw = db.students()
+          .select('id, college_id, name, roll_number, mobile, parent_mobile, section_id')
+          .eq('parent_mobile', mobileRaw)
+          .eq('status', 'active');
+        if (request.rollNumber) queryRaw = queryRaw.eq('roll_number', request.rollNumber);
+
+        const {data: rawData, error: rawErr} = await queryRaw.maybeSingle();
+        studentRecord = rawData;
+        stdErr = rawErr || prefErr;
       }
-      
-      const {data: studentRecord, error: stdErr} = await query.maybeSingle();
 
       if (stdErr) throw new Error(stdErr.message);
       if (!studentRecord) {
@@ -271,15 +290,28 @@ export const verifyOTPAndLogin = async (
         is_active: true,
       };
     } else {
-      const {data, error} = await db.users()
+      // Try fetching user with prefixed mobile format first
+      const {data: prefData, error: prefErr} = await db.users()
         .select('*')
-        .eq('mobile', mobile)
+        .eq('mobile', mobileWithCode)
         .eq('role', request.role)
         .eq('is_active', true)
         .maybeSingle();
-      
-      userRecord = data;
-      userErr = error;
+
+      if (prefData) {
+        userRecord = prefData;
+      } else {
+        // Fallback to raw mobile format
+        const {data: rawData, error: rawErr} = await db.users()
+          .select('*')
+          .eq('mobile', mobileRaw)
+          .eq('role', request.role)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        userRecord = rawData;
+        userErr = rawErr || prefErr;
+      }
     }
 
     if (userErr) throw new Error(userErr.message);
@@ -312,13 +344,23 @@ export const verifyOTPAndLogin = async (
       }
     } else if (request.role === 'parent') {
       // Find student details mapped to parent
-      let query = db.students()
+      let queryPref = db.students()
         .select('id, name, section_id, college_id')
-        .eq('parent_mobile', mobile);
-      if (request.rollNumber) {
-        query = query.eq('roll_number', request.rollNumber);
+        .eq('parent_mobile', mobileWithCode);
+      if (request.rollNumber) queryPref = queryPref.eq('roll_number', request.rollNumber);
+
+      const {data: prefData} = await queryPref.maybeSingle();
+      let student = prefData;
+
+      if (!student) {
+        let queryRaw = db.students()
+          .select('id, name, section_id, college_id')
+          .eq('parent_mobile', mobileRaw);
+        if (request.rollNumber) queryRaw = queryRaw.eq('roll_number', request.rollNumber);
+        const {data: rawData} = await queryRaw.maybeSingle();
+        student = rawData;
       }
-      const {data: student} = await query.maybeSingle();
+
       if (student) {
         studentId = student.id;
         sectionId = student.section_id;

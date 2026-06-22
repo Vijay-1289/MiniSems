@@ -50,6 +50,7 @@ const OTPScreen: React.FC = () => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN);
   const [resending, setResending] = useState(false);
   // The current OTP hint (code shown inline for dev/testing)
@@ -133,6 +134,7 @@ const OTPScreen: React.FC = () => {
 
       if (response.error) {
         setHasError(true);
+        setErrorMessage(response.error.message);
         Toast.show({type: 'error', text1: t('auth.invalidOTP'), text2: response.error.message});
         return;
       }
@@ -263,14 +265,17 @@ const OTPScreen: React.FC = () => {
               onComplete={handleVerify}
               onChange={val => {
                 setOtp(val);
-                if (hasError) setHasError(false);
+                if (hasError) {
+                  setHasError(false);
+                  setErrorMessage(null);
+                }
               }}
               error={hasError}
               disabled={loading}
             />
 
             {hasError && (
-              <Text style={styles.errorMsg}>{t('auth.invalidOTP')}</Text>
+              <Text style={styles.errorMsg}>{errorMessage || t('auth.invalidOTP')}</Text>
             )}
 
             {/* Verify button */}
